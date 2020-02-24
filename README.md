@@ -38,7 +38,7 @@ To remove all created resources:
 <br/><br/>
 
 
-> **Note 1**: This solution should be deployed in us-east-1 (N. Virginia) region. This is because IAM is a global service and its API calls are only available in that region.
+> **Note 1**: This solution should be deployed in us-east-1 (N. Virginia) region. This is because IAM is a global service and its API calls are only available to CloudTrail in that region.
 
 <br/>
 
