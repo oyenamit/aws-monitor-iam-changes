@@ -1,0 +1,245 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "bd032f89-b475-4f51-80aa-ab6690bee7f4": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -110,
+                    "y": 60
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "b7b3e5cc-1c67-4e67-94da-be25755faf5b": {
+                "size": {
+                    "width": 80,
+                    "height": 80
+                },
+                "position": {
+                    "x": 20,
+                    "y": 60
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "23fada97-499b-46b3-83ac-ebca15ea574a": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 30,
+                    "y": 190
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "8671ad6f-5650-4fd8-88b0-403447d7ee0c": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 160,
+                    "y": 70
+                },
+                "z": 0,
+                "embeds": []
+            },
+            "0e7cb62c-82c9-4983-b322-03afb535725c": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 30,
+                    "y": -50
+                },
+                "z": 0,
+                "embeds": [],
+                "dependson": [
+                    "b7b3e5cc-1c67-4e67-94da-be25755faf5b"
+                ]
+            },
+            "b5f778cd-6bb1-4b67-8261-6410f64171d3": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 300,
+                    "y": 70
+                },
+                "z": 0,
+                "embeds": []
+            }
+        }
+    },
+    "Resources": {
+        "iamTrail": {
+            "Type": "AWS::CloudTrail::Trail",
+            "Properties": {
+                "TrailName": "iamTrail",
+                "IncludeGlobalServiceEvents": true,
+                "IsLogging": true,
+                "IsMultiRegionTrail": true,
+                "S3BucketName": {
+                    "Ref": "TrailDestS3BucketName"
+                },
+                "EnableLogFileValidation": true,
+                "CloudWatchLogsLogGroupArn": {
+                    "Fn::GetAtt": [
+                        "TrailLogGroup",
+                        "Arn"
+                    ]
+                },
+                "CloudWatchLogsRoleArn": {
+                    "Fn::GetAtt": [
+                        "TrailLogGroupRole",
+                        "Arn"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "bd032f89-b475-4f51-80aa-ab6690bee7f4"
+                }
+            }
+        },
+        "TrailLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {},
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "b7b3e5cc-1c67-4e67-94da-be25755faf5b"
+                }
+            }
+        },
+        "TrailLogGroupRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": "cloudtrail.amazonaws.com"
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "TrailLogGroupPolicy",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Resource": {
+                                        "Fn::GetAtt": [
+                                            "TrailLogGroup",
+                                            "Arn"
+                                        ]
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "23fada97-499b-46b3-83ac-ebca15ea574a"
+                }
+            }
+        },
+        "iamChangesMetricsFilter": {
+            "Type": "AWS::Logs::MetricFilter",
+            "Properties": {
+                "LogGroupName": {
+                    "Ref": "TrailLogGroup"
+                },
+                "FilterPattern": "{ ( ($.eventSource = \"iam.amazonaws.com\") && (($.eventName = \"Add*\") || ($.eventName = \"Attach*\") || ($.eventName = \"Change*\") || ($.eventName = \"Create*\") || ($.eventName = \"Deactivate*\") || ($.eventName = \"Delete*\") || ($.eventName = \"Detach*\") || ($.eventName = \"Enable*\") || ($.eventName = \"Put*\") || ($.eventName = \"Remove*\") || ($.eventName = \"Set*\") || ($.eventName = \"Update*\") || ($.eventName = \"Upload*\")) ) }",
+                "MetricTransformations": [
+                    {
+                        "MetricNamespace": "CloudTrailMetrics",
+                        "MetricValue": 1,
+                        "MetricName": "iamChangesEventCount"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "0e7cb62c-82c9-4983-b322-03afb535725c"
+                }
+            },
+            "DependsOn": [
+                "TrailLogGroup"
+            ]
+        },
+        "iamChangesAlarm": {
+            "Type": "AWS::CloudWatch::Alarm",
+            "Properties": {
+                "AlarmName": "iamChangesAlarm",
+                "AlarmDescription": "Alarm to detect IAM changes and send notification",
+                "ActionsEnabled": true,
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "EvaluationPeriods": 1,
+                "Period": "60",
+                "Statistic": "SampleCount",
+                "Threshold": 1,
+                "MetricName": "iamChangesEventCount",
+                "Namespace": "CloudTrailMetrics",
+                "AlarmActions": [
+                    {
+                        "Ref": "iamChangesNotification"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "8671ad6f-5650-4fd8-88b0-403447d7ee0c"
+                }
+            }
+        },
+        "iamChangesNotification": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Ref": "NotificationEmail"
+                        },
+                        "Protocol": "email"
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "b5f778cd-6bb1-4b67-8261-6410f64171d3"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "TrailDestS3BucketName": {
+            "Description": "S3 bucket name where CloudTrail can save logs (the bucket policy must be set to allow CloudTrail to write the logs",
+            "Type": "String"
+        },
+        "NotificationEmail": {
+            "Description": "E-mail to which notifications will be sent",
+            "Type": "String"
+        }
+    }
+}
